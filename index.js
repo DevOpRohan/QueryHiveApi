@@ -26,7 +26,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
   const sessionId = uuidv4();
 
   //returning session
-  console.log("Sending Session")
+  console.log($`Sending Session {sessionId}`)
   res.json({ sessionId: sessionId });
   
 });
