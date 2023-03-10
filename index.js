@@ -21,9 +21,14 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 app.post('/upload', upload.single('file'), (req, res) => {
+  console.log('File uploaded successfully!'); // add console statement
   // Preprocess the uploaded file here
   const sessionId = uuidv4();
+
+  //returning session
+  console.log("Sending Session")
   res.json({ sessionId: sessionId });
+  
 });
 
 const port = process.env.PORT || 3000;
