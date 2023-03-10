@@ -27,14 +27,23 @@ app.post('/upload', upload.single('file'), (req, res) => {
   res.json({ sessionId: sessionId });
 });
 
-app.delete('/clearSession/:id', (req, res) => {
-  const sessionId = req.params.id;
-  
-  // Delete the file data from memory
-  delete fileDataBySessionId[sessionId];
+app.delete('/clearSession', (req, res) => {
+  const sessionId = req.query.id;
 
-  console.log(`Session ${sessionId} deleted successfully`);
-  res.json({ message: 'Session deleted successfully' });
+  if (!sessionId) {
+    return res.status(400).json({ message: 'Session ID is required' });
+  }
+
+  try {
+    // Delete the file data from memory
+    delete fileDataBySessionId[sessionId];
+
+    console.log(`Session ${sessionId} deleted successfully`);
+    res.json({ message: 'Session deleted successfully' });
+  } catch (err) {
+    console.error(`Failed to delete session ${sessionId}`, err);
+    res.status(500).json({ message: 'Failed to delete session' });
+  }
 });
 
 const port = process.env.PORT || 3000;
