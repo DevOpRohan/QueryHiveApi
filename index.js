@@ -20,9 +20,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// upload.single('file') 
-
-app.post('/upload',(req, res) => {
+app.post('/upload', upload.single('file'), (req, res) => {
   console.log('File uploaded successfully!'); // add console statement
   // Preprocess the uploaded file here
   const sessionId = uuidv4();
