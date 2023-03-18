@@ -1,83 +1,91 @@
-require ('dotenv').config();
+require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
-const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
-const fs = require('fs');
-const { Configuration, OpenAIApi } = require('openai');
+const { createEmbeddings } = require('./openaiApi');
 
 const app = express();
-app.use(cors()); // enable CORS for all routes
+app.use(cors());
+app.use(express.json());
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
-const fileDataBySessionId = {};
 
-app.post('/upload', upload.single('file'), async (req, res) => {
-  console.log('File uploaded successfully!');
-  const sessionId = uuidv4();
-  const fileContent = req.file.buffer.toString();
-  let currentHeading = '';
+function preprocessDocument(fileContent) {
   let currentTitle = '';
+  let currentHeading = '';
   let currentContent = '';
   const sections = [];
   const lines = fileContent.split('\n');
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
-    if (line.startsWith('#')) {
-      currentHeading = line.substring(1);
-      console.log(`\n${currentHeading}\n`);
-    } else if (line.startsWith('$')) {
-      currentTitle = line.substring(1, line.indexOf(':'));
-      console.log(`${currentTitle}:`);
+    if (line.startsWith('##')) {
+      currentTitle = line.substring(2);
+      console.log(`\n${currentTitle}\n`);
+    } else if (line.startsWith('###')) {
+      currentHeading = line.substring(3, line.indexOf(':'));
+      console.log(`${currentHeading}:`);
       currentContent = '';
     } else {
       currentContent += line;
-      if (i === lines.length - 1 || lines[i + 1].startsWith('#') || lines[i + 1].startsWith('$')) {
+      if (i === lines.length - 1 || lines[i + 1].startsWith('##') || lines[i + 1].startsWith('###')) {
         console.log(`\t${currentContent.trim()}\n`);
         sections.push({
-          heading: currentHeading,
           title: currentTitle,
-          content: currentContent.trim()
+          heading: currentHeading,
+          content: currentContent.trim(),
         });
       }
     }
   }
+  return sections;
+}
+
+async function processFile(req) {
+  const fileContent = req.file.buffer.toString();
+  const sections = preprocessDocument(fileContent);
+
   const model = 'text-embedding-ada-002';
-  const input = sections.map(section => section.content);
-  const configuration = new Configuration({
-    apiKey: process.env.OPENAI_API_KEY,
+  const input = sections.map((section) => section.content);
+  const embeddings = await createEmbeddings(model, input);
+
+  sections.forEach((section, index) => {
+    section.index = index;
+    section.embedding = embeddings[index];
   });
-  const openai = new OpenAIApi(configuration);
+
+  return sections;
+}
+
+app.post('/upload', upload.single('file'), async (req, res) => {
   try {
-    const response = await openai.createEmbedding({ model, input });
-    responseData = response.data;
-    console.log(responseData);
-    const embeddings = responseData.data.map(data => data.embedding);
-    sections.forEach((section, index) => {
-      section.embedding = embeddings[index];
-    });
-    console.log(sections);
-    fileDataBySessionId[sessionId] = sections;
-    console.log(`Sending Session ${sessionId}`);
-    res.json({ sessionId: sessionId });
+    console.log('File uploaded successfully!');
+    const sections = await processFile(req);
+    res.json({ sections: sections });
   } catch (error) {
     console.error(`Error: ${error.message}`);
     res.status(500).json({ message: 'Failed to process file' });
   }
 });
 
-app.delete('/clearSession', (req, res) => {
-  const sessionId = req.query.id;
-  if (!sessionId) {
-    return res.status(400).json({ message: 'Session ID is required' });
+async function processQuery(query) {
+  const model = 'text-embedding-ada-002';
+  const input = [query];
+  const embeddings = await createEmbeddings(model, input);
+  return embeddings[0];
+}
+
+app.post('/embedding', async (req, res) => {
+  const query = req.body.query;
+  if (!query) {
+    return res.status(400).json({ message: 'Query is required' });
   }
+
   try {
-    delete fileDataBySessionId[sessionId];
-    console.log(`Session ${sessionId} deleted successfully`);
-    res.json({ message: 'Session deleted successfully' });
-  } catch (err) {
-    console.error(`Failed to delete session ${sessionId}`, err);
-    res.status(500).json({ message: 'Failed to delete session' });
+    const embedding = await processQuery(query);
+    res.json({ embedding: embedding });
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+    res.status(500).json({ message: 'Failed to process query' });
   }
 });
 
