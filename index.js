@@ -74,14 +74,14 @@ async function processQuery(query) {
   return embeddings[0];
 }
 
-app.post('/embedding', async (req, res) => {
-  const query = req.body.query;
+app.get('/embedding', async (req, res) => {
+  const {query} = req.query;
   if (!query) {
     return res.status(400).json({ message: 'Query is required' });
   }
 
   try {
-    const embedding = await processQuery(query);
+    const embedding = await processQuery(query.toString());
     res.json({ embedding: embedding });
   } catch (error) {
     console.error(`Error: ${error.message}`);

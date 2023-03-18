@@ -8,6 +8,7 @@ const openai = new OpenAIApi(configuration);
 
 async function createEmbeddings(model, input) {
   try {
+    console.log(`Creating embeddings for ${input.length} inputs...`)
     const response = await openai.createEmbedding({ model, input });
     return response.data.data.map((data) => data.embedding);
   } catch (error) {
