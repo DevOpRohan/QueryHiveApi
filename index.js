@@ -49,6 +49,7 @@ async function processFile(req) {
     index,
     title: section.title,
     heading: section.heading,
+    content: section.content,
     embedding: embeddings[index],
   }));
 }
