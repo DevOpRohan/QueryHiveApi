@@ -3,6 +3,13 @@ const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
 const { createEmbeddings } = require('./openaiApi');
+const { Configuration, OpenAIApi } = require('openai');
+
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const openai = new OpenAIApi(configuration);
 
 const app = express();
 app.use(cors());
@@ -85,6 +92,22 @@ app.get('/embedding', async (req, res) => {
     console.error(`Error: ${error.message}`);
     res.status(500).json({ message: 'Failed to process query' });
   }
+});
+
+app.get("/answer, async(req, res) => {
+  const {q} = req.query;
+  console.log(q);
+  const response = await openai.createCompletion({
+    model: "text-davinci-003",
+    prompt:""+q,
+    temperature: 0,
+    max_tokens: 512,
+    top_p: 1,
+    frequency_penalty: 0,
+    presence_penalty: 0
+  });
+  console.log(response.data.choices[0].text);
+  res.send(response.data.choices[0].text);
 });
 
 const port = process.env.PORT || 3000;
