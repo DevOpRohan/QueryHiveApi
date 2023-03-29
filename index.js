@@ -94,7 +94,7 @@ app.get('/embedding', async (req, res) => {
   }
 });
 
-app.get("/answer, async(req, res) => {
+app.get("/answer", async(req, res) => {
   const {q} = req.query;
   console.log(q);
   const response = await openai.createCompletion({
